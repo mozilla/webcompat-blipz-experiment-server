@@ -32,7 +32,8 @@ def new_issue():
     There is no meaningful validation here. Garbage in, garbage in.
     We expect the following sent to us as application/json:
 
-        {"title": "string", "body": "string", "screenshot": "base64string"}
+        {"title": "string", "body": "string", "screenshot": "base64string",
+         "labels": "one, two"}
 
     However, if we don't get that, we return 400
     """
