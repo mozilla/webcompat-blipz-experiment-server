@@ -50,8 +50,9 @@ def new_issue():
                 issue_number = rv.json().get('number')
                 # We use the newly created issue number to help name the file
                 # upload in the s3 bucket.
-                image_data = get_screenshot(screenshot)
-                ss_uri = upload_filedata(image_data, issue_number)
+                image_data, content_type = get_screenshot(screenshot)
+                ss_uri = upload_filedata(
+                    image_data, issue_number, content_type)
                 rv = add_comment(ss_uri, issue_number)
                 return ('Issue created, screenshot uploaded.', rv.status_code)
             return ('Issue created (without screenshot).', 201)
