@@ -19,7 +19,9 @@ from config import S3_LOCATION
 from config import S3_SECRET
 from flaskapp import app
 
-DATA_URI_PREFIX = 'data:image/jpeg;base64,'
+DATA_URI_PREFIX = 'data:image/'
+JPEG_PREFIX = 'data:image/jpeg;base64,'
+PNG_PREFIX = 'data:image/png;base64,'
 
 HEADERS = {
     'Authorization': 'token {0}'.format(app.config['OAUTH_TOKEN']),
@@ -53,12 +55,15 @@ def add_comment(screenshot_uri, issue_number):
     return requests.post(uri, data=json.dumps(body), headers=HEADERS)
 
 
-def upload_filedata(imagedata, issue_number):
-    filename = "issue-{}-screenshot.jpg".format(issue_number)
+def upload_filedata(imagedata, issue_number, content_type):
+    file_ext = 'png'
+    if 'jpeg' in content_type:
+        file_ext = 'jpeg'
+    filename = "issue-{}-screenshot.{}".format(issue_number, file_ext)
     try:
         s3.upload_fileobj(
             imagedata, S3_BUCKET, filename,
-            ExtraArgs={'ACL': 'private', 'ContentType': 'image/jpeg'}
+            ExtraArgs={'ACL': 'private', 'ContentType': content_type}
         )
     except Exception as e:
         print('Error uploading image to s3: ', e)
@@ -80,7 +85,7 @@ def valid_issue_request(body, title):
 
 def has_valid_screenshot(imagedata):
     """Determine if the screenshot is a base64 JPEG."""
-    if imagedata and DATA_URI_PREFIX in imagedata:
+    if imagedata and any([x in imagedata for x in (PNG_PREFIX, JPEG_PREFIX)]):
         return True
     return False
 
@@ -91,9 +96,15 @@ def get_screenshot(imagedata):
     Return the base64 string without the prefix. Otherwise, return None.
     """
     try:
-        imagedata = re.sub(DATA_URI_PREFIX, '', imagedata)
+        content_type = ''
+        if JPEG_PREFIX in imagedata:
+            imagedata = re.sub(JPEG_PREFIX, '', imagedata)
+            content_type = 'image/jpeg'
+        elif PNG_PREFIX in imagedata:
+            imagedata = re.sub(PNG_PREFIX, '', imagedata)
+            content_type = 'image/png'
         bindata = BytesIO(b64decode(imagedata))
-        return bindata
+        return (bindata, content_type)
     except Exception as e:
         print('Error decoding screenshot data', e)
-        return None
+        return (None, None)
